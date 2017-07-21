@@ -1,0 +1,7 @@
+/.classpath
+/.project
+/liblwjgl.jnilib
+/liblwjgl.so
+/liblwjgl64.so
+/lwjgl.dll
+/lwjgl64.dll
