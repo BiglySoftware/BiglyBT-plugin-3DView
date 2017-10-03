@@ -5,3 +5,12 @@
 /liblwjgl64.so
 /lwjgl.dll
 /lwjgl64.dll
+/*.so
+/*.dll
+/*.jnilib
+/*.dylib
+/*.jar
+*.zip
+*.biglybt
+*.bak
+*.class
