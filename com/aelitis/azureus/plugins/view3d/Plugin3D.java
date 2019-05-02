@@ -94,7 +94,8 @@ public class Plugin3D implements Plugin {
         fieldSysPath.set(System.class.getClassLoader(), null);
       }
     } catch(Exception e) {
-      e.printStackTrace();
+      // e.printStackTrace(); should probably have been using this all along... works with JDK10+ anyway
+      System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
     }
     
     pluginInterface  = _pi;
