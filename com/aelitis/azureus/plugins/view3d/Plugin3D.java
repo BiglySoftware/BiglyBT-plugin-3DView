@@ -25,32 +25,23 @@ package com.aelitis.azureus.plugins.view3d;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.eclipse.swt.widgets.Composite;
+
+import com.biglybt.ui.swt.Utils;
+import com.biglybt.ui.swt.pif.*;
+
 import com.biglybt.pif.Plugin;
 import com.biglybt.pif.PluginConfig;
 import com.biglybt.pif.PluginInterface;
 import com.biglybt.pif.download.Download;
-import com.biglybt.pif.ipc.IPCException;
 import com.biglybt.pif.ui.UIInstance;
 import com.biglybt.pif.ui.UIManager;
 import com.biglybt.pif.ui.UIManagerListener;
 import com.biglybt.pif.ui.config.BooleanParameter;
-import com.biglybt.pif.ui.config.Parameter;
-import com.biglybt.pif.ui.config.ParameterListener;
 import com.biglybt.pif.ui.config.StringListParameter;
 import com.biglybt.pif.ui.model.BasicPluginConfigModel;
-import com.biglybt.pif.ui.tables.TableManager;
 import com.biglybt.pif.utils.LocaleUtilities;
-import com.biglybt.ui.swt.Utils;
-import com.biglybt.ui.swt.pif.UISWTInstance;
-import com.biglybt.ui.swt.pif.UISWTView;
-import com.biglybt.ui.swt.pif.UISWTViewEvent;
-import com.biglybt.ui.swt.pif.UISWTViewEventListenerEx;
-
 
 
 public class Plugin3D implements Plugin {
@@ -67,12 +58,12 @@ public class Plugin3D implements Plugin {
 	
 	private UISWTInstance swtInstance = null;
 	
-	public final String LAUNCH_ON_START = "Launch on start";
-	public final String ROTATION_SPEED = "Rotation Speed";
+	public static final String LAUNCH_ON_START = "Launch on start";
+	public static final String ROTATION_SPEED = "Rotation Speed";
 	
 	private boolean bLaunchOnStart;
 	
-	private HashMap Params = new HashMap();
+	private final HashMap<Integer, Object> Params = new HashMap<>();
 	
   
   @Override
@@ -111,10 +102,7 @@ public class Plugin3D implements Plugin {
 	
 	final BooleanParameter bP1 = config_model.addBooleanParameter2(LAUNCH_ON_START, "view3d.options.launch", false);
 	
-	config_model.createGroup( "view3d.options.launch.title",
-			new Parameter[]{ 
-				bP1
-			});
+	config_model.createGroup( "view3d.options.launch.title", bP1);
 	
 	String[] values = {"0","1","2","3"};
 	String[] labels = {	localeUtils.getLocalisedMessageText("view3d.options.display.rotation.none"),
@@ -127,84 +115,53 @@ public class Plugin3D implements Plugin {
 	final BooleanParameter b_accum = config_model.addBooleanParameter2( "view3d.options.use_accum", "view3d.options.use_accum", true );
 
 	
-	config_model.createGroup( "view3d.options.display.title", 
-			new Parameter[] {
-				slPDisplayRotationSpeed, b_accum
-	});
+	config_model.createGroup( "view3d.options.display.title",
+			slPDisplayRotationSpeed, b_accum);
     
     bLaunchOnStart = pluginConfig.getPluginBooleanParameter(LAUNCH_ON_START);
     
-    Params.put(new Integer(0), bLaunchOnStart?"1":"0");
-    Params.put(new Integer(1), slPDisplayRotationSpeed.getValue());
-    Params.put(new Integer(2), b_accum.getValue());
+    Params.put(0, bLaunchOnStart?"1":"0");
+    Params.put(1, slPDisplayRotationSpeed.getValue());
+    Params.put(2, b_accum.getValue());
     
-    b_accum.addListener(
-    	new ParameterListener()
-    	{
-    		@Override
-		    public void
-    		parameterChanged(
-    			Parameter param)
-    		{
-    			Params.put(new Integer(2), b_accum.getValue());
-    		}
-    	});
+    b_accum.addListener(param -> Params.put(2, b_accum.getValue()));
     
-	final String[] views = {
-			UISWTInstance.VIEW_MYTORRENTS,	
-			TableManager.TABLE_MYTORRENTS_ALL_BIG,	
-			TableManager.TABLE_MYTORRENTS_INCOMPLETE,
-			TableManager.TABLE_MYTORRENTS_INCOMPLETE_BIG,
-			TableManager.TABLE_MYTORRENTS_COMPLETE
-	};
 	
 	pluginInterface.getUIManager().addUIListener(
 			new UIManagerListener()
 			{
-				private ViewListener	view_listener;
-				
 				@Override
 				public void
 				UIAttached(
 					UIInstance		instance )
 				{
-					if ( instance instanceof UISWTInstance ){
-						
-						swtInstance = (UISWTInstance)instance;
-						
-						view_listener = new ViewListener();
-
-						swtInstance.addView( UISWTInstance.VIEW_MAIN, VIEWID_ALL, view_listener );
-						swtInstance.addView( UISWTInstance.VIEW_MAIN, VIEWID_MOST_ACTIVE, view_listener );
-						
-						for ( String id: views ) {
-							swtInstance.addView( id, VIEWID_SUBTAB, view_listener );
+						if (!(instance instanceof UISWTInstance)) {
+							return;
 						}
-						
-						if(bLaunchOnStart)
-							swtInstance.openMainView(VIEWID_ALL, view_listener, null);
+
+						swtInstance = (UISWTInstance) instance;
+
+						swtInstance.registerView(UISWTInstance.VIEW_MAIN,
+								swtInstance.createViewBuilder(VIEWID_ALL, ViewListener.class));
+						swtInstance.registerView(UISWTInstance.VIEW_MAIN,
+								swtInstance.createViewBuilder(VIEWID_MOST_ACTIVE,
+										ViewListener.class));
+
+						swtInstance.registerView(Download.class,
+								swtInstance.createViewBuilder(VIEWID_SUBTAB,
+										ViewListener.class));
+
+						if (bLaunchOnStart) {
+							swtInstance.openView(UISWTInstance.VIEW_MAIN, VIEWID_ALL, null,
+									false);
+						}
 					}
-				}
 				
 				@Override
 				public void
 				UIDetached(
 					UIInstance		instance )
 				{
-					if ( instance instanceof UISWTInstance ) {
-
-						UISWTInstance uiswtInstance = (UISWTInstance)instance;
-						
-						uiswtInstance.removeViews(UISWTInstance.VIEW_MAIN, VIEWID_ALL);
-						uiswtInstance.removeViews(UISWTInstance.VIEW_MAIN, VIEWID_MOST_ACTIVE);
-						
-						for ( String id: views ) {
-							uiswtInstance.removeViews(id, VIEWID_SUBTAB);
-						}
-						
-						swtInstance = null;
-					}
-
 				}
 			});
     
@@ -216,98 +173,64 @@ public class Plugin3D implements Plugin {
   {
 	  return( localeUtils.getLocalisedMessageText( key ));
   }
-  
-  	public UISWTViewEventListenerEx
-  	cloneViewListener()
-  	
-  		throws IPCException
-  	{
-  		return( new ViewListener());
-  	}
-  
-	public class ViewListener implements UISWTViewEventListenerEx {
 
-		private Map<UISWTView,ViewHolder>	view_map = new IdentityHashMap<>();
-		
+	public HashMap getParams() {
+		return Params;
+	}
 
-		public UISWTViewEventListenerEx
-		getClone()
-		{
-			return( new ViewListener());
-		}
-		
-		public CloneConstructor
-		getCloneConstructor()
-		{
-			return( 
-				new CloneConstructor()
-				{
-					public PluginInterface
-					getPluginInterface()
-					{
-						return( pluginInterface );
-					}
-					
-					public String
-					getIPCMethod()
-					{
-						return( "cloneViewListener" );
-					}
-				});
-		}
-		
+	public static class ViewListener implements UISWTViewEventListener {
+		private	Composite	composite;
+		private	Panel3D		panel;
+		private Download	ds;
+		private Plugin3D plugin;
+		private PluginInterface pluginInterface;
+
 		@Override
 		public boolean eventOccurred(UISWTViewEvent event) {
 			UISWTView view = event.getView();
 			
-			ViewHolder holder = view_map.get( view );
-			
 			switch (event.getType()) {
 			
 				case UISWTViewEvent.TYPE_CREATE:
-			        if ( holder != null ){
-			          return false;
-			        }
-			        view_map.put( view, new ViewHolder());
-			        break;
+					pluginInterface = event.getView().getPluginInterface();
+					plugin = (Plugin3D) pluginInterface.getPlugin();
+					break;
 
 				case UISWTViewEvent.TYPE_INITIALIZE:{
-					
-					Composite	comp = (Composite)event.getData();
-					
-					holder.composite = comp;
+
+					composite = (Composite)event.getData();
 							
 					break;
 				}
 				case UISWTViewEvent.TYPE_REFRESH:{
 
-					if ( holder.panel != null ) {
+					if ( panel != null ) {
 					
-						holder.panel.refresh();
+						panel.refresh();
 					}
 					
 					break;
 				}
-				case UISWTViewEvent.TYPE_FOCUSGAINED:{
+				case UISWTViewEvent.TYPE_SHOWN:{
 
-					if ( holder.panel != null ) {
+					if ( panel != null ) {
 						
-						holder.panel.delete();
+						panel.delete();
 						
-						holder.panel = null;
+						panel = null;
 					}
 					
-					Composite comp = holder.composite;
+					Composite comp = composite;
 				
 					Utils.disposeComposite( comp, false);
 					
-					Panel3D panel = holder.panel = new Panel3D( Plugin3D.this, pluginInterface, view.getViewID(), Params );
+					panel = new Panel3D( plugin, pluginInterface, view.getViewID(), plugin.getParams() );
 					
 					panel.initialize( comp );
 				
-					if ( holder.ds != null ) {
+					if ( ds != null ) {
 						
-						panel.setDataSource( holder.ds );
+						panel.setDataSource( ds );
 					}
 					
 					comp.layout( true, true );
@@ -329,43 +252,35 @@ public class Plugin3D implements Plugin {
 						}
 					}
 										
-					if ( holder != null ) {
-						
-						holder.ds = download;
-						
-						if (holder.panel != null ){
-						
-							holder.panel.setDataSource( download );
-						}
+					this.ds = download;
+					
+					if (panel != null ){
+					
+						panel.setDataSource( download );
 					}
 					break;
 				}
-				case UISWTViewEvent.TYPE_FOCUSLOST:{
+				case UISWTViewEvent.TYPE_HIDDEN:{
 
-					if ( holder != null ) {
+						if ( panel != null){
 						
-						if ( holder.panel != null){
-						
-							holder.ds = holder.panel.getDataSouce();
+							ds = panel.getDataSouce();
 							
-							holder.panel.delete();
+							panel.delete();
 							
-							holder.panel = null;
+							panel = null;
 						}
 						
-						Utils.disposeComposite(holder.composite,false);
-					}
+						Utils.disposeComposite(composite,false);
 					
 					break;
 				}
 
 				case UISWTViewEvent.TYPE_DESTROY:{
-					if ( holder != null && holder.panel != null){
+					if ( panel != null){
 					
-						holder.panel.delete();
+						panel.delete();
 					}
-					
-					view_map.remove( view );
 					
 					break;
 				}	
@@ -374,14 +289,6 @@ public class Plugin3D implements Plugin {
 			return true;
 		}
 
-	}
-  
-	private class
-	ViewHolder
-	{
-		private	Composite	composite;
-		private	Panel3D		panel;
-		private Download	ds;
 	}
 	
   public PluginInterface getPluginInterface() {
