@@ -367,7 +367,11 @@ public class Panel3D  {
     updateHeader(download);
   }  
   private void updateHeader(Download download) {
+	  if ( download == null ){
+		lHeader.setText( "" );
+	  }else{
 	    lHeader.setText("  3D View : " + download.getTorrent().getName());
+	  }
   }
   
   public void delete() {   
@@ -411,6 +415,8 @@ public class Panel3D  {
 				  if ( speed > 0 ) {
 					  peer3DView.setDownload(fastest);
 				      updateHeader(fastest); 
+				  }else{
+					  updateHeader((Download)null);
 				  }
 			  }
 		  }
