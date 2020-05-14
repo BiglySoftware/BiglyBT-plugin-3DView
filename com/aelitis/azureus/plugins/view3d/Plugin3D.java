@@ -30,7 +30,7 @@ import org.eclipse.swt.widgets.Composite;
 
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.pif.*;
-
+import com.biglybt.core.util.Constants;
 import com.biglybt.pif.Plugin;
 import com.biglybt.pif.PluginConfig;
 import com.biglybt.pif.PluginInterface;
@@ -71,23 +71,32 @@ public class Plugin3D implements Plugin {
   initialize(
     PluginInterface   _pi )
   {
-    try {
-      String binaryPath = _pi.getPluginDirectoryName();
-      String newLibPath = binaryPath + File.pathSeparator +
-      System.getProperty("java.library.path"); 
-    
-      System.setProperty("java.library.path", newLibPath);
-      Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
-    
-      fieldSysPath.setAccessible(true);
-    
-      if (fieldSysPath != null) {
-        fieldSysPath.set(System.class.getClassLoader(), null);
-      }
-    } catch(Exception e) {
-      // e.printStackTrace(); should probably have been using this all along... works with JDK10+ anyway
-      System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
-    }
+	  if ( Constants.isJava10OrHigher ){
+
+		  	// we have to use this as Java 11 has changes that cause our sys_paths hack below to cause massive
+		  	// class loading issues...
+		  
+		  System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
+		  
+	  }else{
+		  try {
+			  String binaryPath = _pi.getPluginDirectoryName();
+			  String newLibPath = binaryPath + File.pathSeparator +
+					  System.getProperty("java.library.path"); 
+
+			  System.setProperty("java.library.path", newLibPath);
+			  Field fieldSysPath = ClassLoader.class.getDeclaredField("sys_paths");
+
+			  fieldSysPath.setAccessible(true);
+
+			  if (fieldSysPath != null) {
+				  fieldSysPath.set(System.class.getClassLoader(), null);
+			  }
+		  } catch(Exception e) {
+			  // e.printStackTrace(); should probably have been using this all along... works with JDK10+ anyway
+			  System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
+		  }
+	  }
     
     pluginInterface  = _pi;
     pluginConfig = pluginInterface.getPluginconfig();
