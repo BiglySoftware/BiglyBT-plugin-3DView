@@ -71,16 +71,32 @@ public class Plugin3D implements Plugin {
   initialize(
     PluginInterface   _pi )
   {
+	  String nativeDir = _pi.getPluginDirectoryName();
+	  
+	  if ( Constants.isOSX ){
+		  
+		  String  arch = System.getProperty("os.arch");
+			
+		  if ( arch.startsWith("arm") || arch.startsWith("aarch")){
+			  
+			  nativeDir += File.separator + "arm";
+			  
+		  }else{
+
+			  nativeDir += File.separator + "x86";
+		  }
+	  }
+	  
 	  if ( Constants.isJava10OrHigher ){
 
 		  	// we have to use this as Java 11 has changes that cause our sys_paths hack below to cause massive
 		  	// class loading issues...
 		  
-		  System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
+		  System.setProperty( "org.lwjgl.librarypath", nativeDir);
 		  
 	  }else{
 		  try {
-			  String binaryPath = _pi.getPluginDirectoryName();
+			  String binaryPath = nativeDir;
 			  String newLibPath = binaryPath + File.pathSeparator +
 					  System.getProperty("java.library.path"); 
 
@@ -94,7 +110,7 @@ public class Plugin3D implements Plugin {
 			  }
 		  } catch(Exception e) {
 			  // e.printStackTrace(); should probably have been using this all along... works with JDK10+ anyway
-			  System.setProperty( "org.lwjgl.librarypath", _pi.getPluginDirectoryName());
+			  System.setProperty( "org.lwjgl.librarypath", nativeDir);
 		  }
 	  }
     
