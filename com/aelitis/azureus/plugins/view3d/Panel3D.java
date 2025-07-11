@@ -346,7 +346,12 @@ public class Panel3D  {
 				
 				Download download = PluginCoreUtils.wrap(dl);
 				
-				if (lHeader.getData( "Download" ) == download ){
+				if (lHeader.isDisposed()){
+					
+					return;
+				}
+				
+				if ( lHeader.getData( "Download" ) == download ){
 					updateHeader( download );
 				}
 				fillTable();
@@ -536,8 +541,8 @@ public class Panel3D  {
 	    }
 	    // Turn drawing back on
 	    channelTable.setRedraw(true);
-	    //name.pack(); this causes no redraw to occur so removing!
+	    
+	    Utils.execSWTThreadLater(0, ()->{  name.pack(); });
 	  }
- 
 }
   
