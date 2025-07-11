@@ -43,6 +43,8 @@ import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
 
+import com.biglybt.core.download.DownloadManagerState;
+import com.biglybt.core.download.DownloadManagerStateAttributeListener;
 import com.biglybt.core.util.IdentityHashSet;
 import com.biglybt.core.util.SystemTime;
 import com.biglybt.pif.PluginInterface;
@@ -50,6 +52,7 @@ import com.biglybt.pif.download.Download;
 import com.biglybt.pif.download.DownloadManager;
 import com.biglybt.pif.download.DownloadListener;
 import com.biglybt.pif.download.DownloadManagerListener;
+import com.biglybt.pifimpl.local.PluginCoreUtils;
 import com.biglybt.ui.swt.Utils;
 import com.biglybt.ui.swt.mainwindow.Colors;
 
@@ -324,11 +327,33 @@ public class Panel3D  {
   
   private class Swarm3DDMListener implements DownloadManagerListener
   {
-    private DownloadListener        download_listener;
-
+    private DownloadListener        				download_listener;
+    private DownloadManagerStateAttributeListener	dl_attribute_listener;
+    
     
     public Swarm3DDMListener() {
       download_listener = new Swarm3DDownloadListener();
+      dl_attribute_listener = new DownloadManagerStateAttributeListener(){
+		
+		@Override
+		public void 
+		attributeEventOccurred(
+			com.biglybt.core.download.DownloadManager dl, 
+			String attribute,
+			int event_type)
+		{
+			Utils.execSWTThread(()->{
+				
+				Download download = PluginCoreUtils.wrap(dl);
+				
+				if (lHeader.getData( "Download" ) == download ){
+					updateHeader( download );
+				}
+				fillTable();
+			});
+		}
+      };
+      
       downloads = download_manager.getDownloads();
       for(int i=0;i<downloads.length;i++) {
     	  Download download = downloads[i];
@@ -344,11 +369,18 @@ public class Panel3D  {
     @Override
     public void downloadAdded(final Download download) {
     	download.addListener( download_listener );
+    	PluginCoreUtils.unwrap( download ).getDownloadState().addListener(
+    		dl_attribute_listener, 
+    		DownloadManagerState.AT_DISPLAY_NAME, DownloadManagerStateAttributeListener.WRITTEN );
     }
 
     @Override
     public void downloadRemoved(final Download download) {
     	download.removeListener( download_listener ); 
+    	PluginCoreUtils.unwrap( download ).getDownloadState().removeListener(
+        		dl_attribute_listener, 
+        		DownloadManagerState.AT_DISPLAY_NAME, DownloadManagerStateAttributeListener.WRITTEN );
+
       }
   }
 
@@ -367,10 +399,11 @@ public class Panel3D  {
     updateHeader(download);
   }  
   private void updateHeader(Download download) {
+	  lHeader.setData("Download", download );
 	  if ( download == null ){
 		lHeader.setText( "" );
 	  }else{
-	    lHeader.setText("  3D View : " + download.getTorrent().getName());
+	    lHeader.setText("  3D View : " + download.getName());
 	  }
   }
   
@@ -455,7 +488,7 @@ public class Panel3D  {
 		        	if ( !channelTable.isDisposed()){
 			          item = new TableItem(channelTable,SWT.NONE);
 			          item.setData("Download",download);
-			          item.setText(download.getTorrent().getName());
+			          item.setText(download.getName());
 			          fillTable();
 		        	}
 		        }
@@ -490,7 +523,7 @@ public class Panel3D  {
 							Download	d1 = (Download)o1;
 							Download	d2 = (Download)o2;
 	
-							int	res = comparator.compare( "" + d1.getTorrent().getName(),  "" + d2.getTorrent().getName() );
+							int	res = comparator.compare( "" + d1.getName(),  "" + d2.getName() );
 							
 							return(  res );
 						}
@@ -498,12 +531,12 @@ public class Panel3D  {
 		    for (int i = 0; i<dls.length; i++) {
 		    	item = new TableItem(channelTable,SWT.NONE);
 		        item.setData("Download",dls[i]);
-		        item.setText(dls[i].getTorrent().getName());          
+		        item.setText(dls[i].getName());          
 		    }
 	    }
 	    // Turn drawing back on
 	    channelTable.setRedraw(true);
-	    name.pack();
+	    //name.pack(); this causes no redraw to occur so removing!
 	  }
  
 }
